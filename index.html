@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="bg">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Упражнение по Умножение</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                max-width: 600px;
+                margin: 20px auto;
+                padding: 15px;
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                background-color: #f9f9f9;
+            }
+            h1,
+            h2 {
+                text-align: center;
+                color: #333;
+            }
+            #settings {
+                margin-bottom: 20px;
+                padding: 15px;
+                border: 1px dashed #ddd;
+                border-radius: 5px;
+                background-color: #fff;
+            }
+            #settings label {
+                display: inline-block;
+                margin-right: 15px;
+                margin-bottom: 5px; /* Added margin for better spacing */
+                cursor: pointer;
+            }
+            #settings input[type="checkbox"] {
+                margin-right: 5px;
+                vertical-align: middle; /* Align checkbox with text */
+            }
+            #select-all-container {
+                margin-bottom: 10px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #eee; /* Separator */
+            }
+            #checkbox-container {
+                padding-top: 5px;
+            }
+            #quiz {
+                text-align: center;
+                padding: 20px;
+                background-color: #eef;
+                border-radius: 5px;
+            }
+            #question {
+                font-size: 1.8em;
+                font-weight: bold;
+                margin-bottom: 15px;
+                color: #0056b3;
+                min-height: 1.2em; /* Prevent layout shift */
+            }
+            #answer {
+                padding: 10px;
+                font-size: 1.2em;
+                margin-right: 10px;
+                width: 80px;
+                text-align: center;
+            }
+            #submitBtn {
+                padding: 10px 20px;
+                font-size: 1.2em;
+                cursor: pointer;
+                background-color: #28a745;
+                color: white;
+                border: none;
+                border-radius: 5px;
+            }
+            #submitBtn:hover {
+                background-color: #218838;
+            }
+            #feedback {
+                margin-top: 15px;
+                font-size: 1.3em;
+                font-weight: bold;
+                min-height: 1.5em; /* Prevent layout shift */
+            }
+            .correct {
+                color: green;
+            }
+            .incorrect {
+                color: red;
+            }
+            .info {
+                color: #555;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Таблица за Умножение</h1>
+
+        <div id="settings">
+            <h2>Избери числа за упражнение:</h2>
+            <div id="select-all-container">
+                <label for="cb-all">
+                    <input type="checkbox" id="cb-all" />
+                    <strong>Всички (2-9)</strong>
+                </label>
+            </div>
+            <div id="checkbox-container"></div>
+        </div>
+
+        <div id="quiz">
+            <p id="question" class="info">Моля, избери поне едно число горе.</p>
+            <input type="number" id="answer" style="display: none" />
+            <button id="submitBtn" style="display: none">Провери</button>
+            <p id="feedback"></p>
+        </div>
+
+        <script>
+            // --- DOM Elements ---
+            const selectAllCheckbox = document.getElementById("cb-all");
+            const checkboxContainer =
+                document.getElementById("checkbox-container");
+            const questionP = document.getElementById("question");
+            const answerInput = document.getElementById("answer");
+            const submitBtn = document.getElementById("submitBtn");
+            const feedbackP = document.getElementById("feedback");
+
+            // --- State ---
+            let selectedNumbers = [];
+            let availableQuestions = [];
+            let currentQuestion = null;
+            let numberCheckboxes = []; // To hold references to checkboxes 2-9
+
+            // --- Functions ---
+
+            /**
+             * Creates checkboxes for numbers 2 through 9.
+             */
+            function createCheckboxes() {
+                numberCheckboxes = []; // Clear the array first
+                for (let i = 2; i <= 9; i++) {
+                    const label = document.createElement("label");
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.value = i;
+                    checkbox.id = `cb-${i}`;
+                    // Add event listener to each number checkbox
+                    checkbox.addEventListener("change", handleCheckboxChange);
+
+                    label.htmlFor = `cb-${i}`;
+                    label.appendChild(checkbox);
+                    label.appendChild(document.createTextNode(` ${i} `));
+                    checkboxContainer.appendChild(label);
+                    numberCheckboxes.push(checkbox); // Store reference
+                }
+            }
+
+            /**
+             * Updates the state of the "Select All" checkbox based on individual selections.
+             */
+            function updateSelectAllCheckboxState() {
+                // Check if all number checkboxes (2-9) are checked
+                const allChecked = numberCheckboxes.every((cb) => cb.checked);
+                selectAllCheckbox.checked = allChecked;
+            }
+
+            /**
+             * Handles the change event of the "Select All" checkbox.
+             */
+            function handleSelectAllChange(event) {
+                const isChecked = event.target.checked;
+                selectedNumbers = []; // Reset selected numbers
+
+                // Set all individual number checkboxes to the same state
+                numberCheckboxes.forEach((checkbox) => {
+                    checkbox.checked = isChecked;
+                    if (isChecked) {
+                        selectedNumbers.push(parseInt(checkbox.value));
+                    }
+                });
+
+                selectedNumbers.sort((a, b) => a - b); // Keep sorted
+                updateAvailableQuestions();
+                generateQuestion();
+            }
+
+            /**
+             * Handles the change event of an individual number checkbox.
+             */
+            function handleCheckboxChange(event) {
+                const number = parseInt(event.target.value);
+                const isChecked = event.target.checked;
+
+                if (isChecked) {
+                    // Add number if checked and not already present
+                    if (!selectedNumbers.includes(number)) {
+                        selectedNumbers.push(number);
+                    }
+                } else {
+                    // Remove number if unchecked
+                    selectedNumbers = selectedNumbers.filter(
+                        (n) => n !== number
+                    );
+                }
+                selectedNumbers.sort((a, b) => a - b); // Keep sorted
+
+                updateSelectAllCheckboxState(); // Check if "Select All" needs updating
+                updateAvailableQuestions();
+                generateQuestion();
+            }
+
+            /**
+             * Updates the pool of available questions based on selected numbers.
+             */
+            function updateAvailableQuestions() {
+                availableQuestions = [];
+                selectedNumbers.forEach((n1) => {
+                    for (let n2 = 2; n2 <= 10; n2++) {
+                        availableQuestions.push({
+                            n1: n1,
+                            n2: n2,
+                            answer: n1 * n2,
+                        });
+                    }
+                });
+                // console.log("Available questions:", availableQuestions.length); // For debugging
+            }
+
+            /**
+             * Generates and displays a new random question.
+             */
+            function generateQuestion() {
+                feedbackP.textContent = "";
+                feedbackP.className = "";
+
+                if (availableQuestions.length === 0) {
+                    questionP.textContent =
+                        "Моля, избери поне едно число горе.";
+                    questionP.className = "info";
+                    answerInput.style.display = "none";
+                    submitBtn.style.display = "none";
+                    currentQuestion = null;
+                    answerInput.value = "";
+                    return;
+                }
+
+                answerInput.style.display = "inline-block";
+                submitBtn.style.display = "inline-block";
+
+                const randomIndex = Math.floor(
+                    Math.random() * availableQuestions.length
+                );
+                currentQuestion = availableQuestions[randomIndex];
+
+                questionP.textContent = `Колко е ${currentQuestion.n1} x ${currentQuestion.n2}?`;
+                questionP.className = "";
+                answerInput.value = "";
+                answerInput.focus();
+            }
+
+            /**
+             * Checks the user's answer against the correct answer.
+             */
+            function checkAnswer() {
+                if (!currentQuestion) return;
+
+                const userAnswerStr = answerInput.value.trim();
+                if (userAnswerStr === "") {
+                    feedbackP.textContent = "Моля, въведи отговор.";
+                    feedbackP.className = "info";
+                    return;
+                }
+                const userAnswer = parseInt(userAnswerStr);
+
+                if (isNaN(userAnswer)) {
+                    feedbackP.textContent = "Моля, въведи число.";
+                    feedbackP.className = "info";
+                    return;
+                }
+
+                if (userAnswer === currentQuestion.answer) {
+                    feedbackP.textContent = "Верен!";
+                    feedbackP.className = "correct";
+                } else {
+                    feedbackP.textContent = `Грешен! Верният отговор е ${currentQuestion.answer}.`;
+                    feedbackP.className = "incorrect";
+                }
+
+                setTimeout(generateQuestion, 1500);
+            }
+
+            /**
+             * Adds necessary event listeners.
+             */
+            function addEventListeners() {
+                submitBtn.addEventListener("click", checkAnswer);
+                selectAllCheckbox.addEventListener(
+                    "change",
+                    handleSelectAllChange
+                ); // Listener for "Select All"
+
+                answerInput.addEventListener("keypress", function (event) {
+                    if (event.key === "Enter" || event.keyCode === 13) {
+                        event.preventDefault();
+                        checkAnswer();
+                    }
+                });
+            }
+
+            /**
+             * Initializes the application.
+             */
+            function initialize() {
+                createCheckboxes(); // Creates number checkboxes and populates numberCheckboxes array
+                addEventListeners();
+                updateSelectAllCheckboxState(); // Set initial state of "Select All" (likely unchecked)
+                generateQuestion(); // Show initial message
+            }
+
+            // --- Start the app ---
+            initialize();
+        </script>
+    </body>
+</html>
